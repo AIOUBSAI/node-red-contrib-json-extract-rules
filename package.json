@@ -1,0 +1,44 @@
+{
+  "name": "node-red-contrib-json-extract-rules",
+  "version": "0.1.0",
+  "description": "Node-RED node to declaratively extract, filter, map, and aggregate JSON using JSONata and typed inputs.",
+  "keywords": [
+    "node-red",
+    "node-red-contrib",
+    "json",
+    "jsonata",
+    "etl",
+    "transform",
+    "mapping",
+    "extract"
+  ],
+  "author": "sai aioub <sai.aioub@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/AIOUBSAI/node-red-contrib-json-extract-rules#readme",
+  "bugs": {
+    "url": "https://github.com/AIOUBSAI/node-red-contrib-json-extract-rules/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AIOUBSAI/node-red-contrib-json-extract-rules.git"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "node-red": {
+    "version": ">=3.0.0",
+    "nodes": {
+      "json-extract-rules": "json-extract-rules.js"
+    }
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {},
+  "files": [
+    "json-extract-rules.js",
+    "json-extract-rules.html",
+    "README.md",
+    "LICENSE"
+  ]
+}

@@ -1,0 +1,604 @@
+<!-- json-extract-rules.html -->
+<style>
+  /* ====== json-extract-rules (SBI-like skin) ====== */
+  .jer{
+    --b: var(--nr-editor-border,#e3e3e3);
+    --bg: var(--nr-editor-dialog-background,#fff);
+    --panel: var(--nr-editor-sidebar-background,#f8f9fb);
+    --muted: rgba(0,0,0,.55);
+  }
+  .jer .row{ margin:10px 0 }
+  .jer label{
+    display:block; font-size:12px; font-weight:600; color:var(--muted);
+    text-transform:uppercase; margin-bottom:6px;
+  }
+
+  /* IMPORTANT: do NOT style the typedInput inner text box */
+  .jer input[type="text"]:not(.red-ui-typedInput-input),
+  .jer select,
+  .jer textarea{
+    width:100% !important; box-sizing:border-box; border:1px solid var(--b);
+    border-radius:0; padding:8px 10px; height:34px; background:var(--bg);
+  }
+  .jer textarea{ height:86px; resize:vertical }
+
+  /* grid helpers */
+  .jer .grid, .jer .dlg-grid{ display:grid; gap:10px }
+  @media (min-width:980px){
+    .jer .g-2{ grid-template-columns:1fr 1fr }
+    .jer .g-3, .jer .dlg-3{ grid-template-columns:1.6fr 1fr 1fr }
+    .jer .g-4{ grid-template-columns:1fr 1fr 1fr 1fr }
+    .jer .dlg-2{ grid-template-columns:1fr 1fr }
+  }
+
+  /* panels */
+  .jer .card{
+    border:1px solid var(--b); border-radius:0; padding:10px 12px; background:var(--panel);
+  }
+  .jer .subcard{
+    border:1px dashed var(--b); border-radius:0; padding:10px; background:#fff;
+  }
+
+  /* buttons & toolbars */
+  .jer .btnrow, .jer .toolbar{ display:flex; gap:8px; align-items:center }
+  .jer .btnrow{ justify-content:flex-end }
+  .jer .spacer{ flex:1 }
+  .jer .hint{ font-size:12px; color:var(--muted) }
+  .jer .caps{ text-transform:uppercase; font-weight:700; font-size:12px; opacity:.75 }
+
+  /* table */
+  .jer table{ width:100%; border-collapse:collapse }
+  .jer th, .jer td{ border-bottom:1px solid var(--b); padding:6px 4px }
+  .jer thead th{ background: var(--nr-editor-button-background,#f6f6f6); font-weight:700 }
+  .jer .right{ text-align:right }
+  .jer .actions .red-ui-button{ padding:2px 6px }
+
+  /* checkbox rows */
+  .jer .checkline{ display:flex; gap:8px; align-items:center }
+  .jer .checkline input[type="checkbox"]{ transform:scale(1.05) }
+
+  /* typedInput: keep container full-width, do not touch inner input */
+  .jer .red-ui-typedInput,
+  .jer .red-ui-typedInput-container{
+    width:100% !important; box-sizing:border-box;
+  }
+
+  /* dialog buttons */
+  .ui-dialog .ui-dialog-buttonpane .ui-dialog-buttonset .primary{ background:#c00; color:#fff }
+
+  /* dialog-specific consistency */
+  .ui-dialog .jer input[type="text"]:not(.red-ui-typedInput-input),
+  .ui-dialog .jer select{
+    height:34px !important; line-height:34px !important;
+  }
+  .ui-dialog .jer .subcard thead th{ background:#f5f6f7 }
+</style>
+
+
+<script type="text/x-red" data-template-name="json-extract-rules">
+  <div class="jer">
+    <!-- NAME -->
+    <div class="row">
+      <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+      <input type="text" id="node-input-name" placeholder="json-extract-rules">
+    </div>
+
+    <!-- SOURCE + NA -->
+    <div class="row card">
+      <div class="grid g-2">
+        <div>
+          <label><i class="fa fa-database"></i> Source root</label>
+          <input type="text" id="jer-source-path"><input type="hidden" id="jer-source-type">
+          <div class="hint">Where to read data from (e.g. <code>msg.data</code> or JSONata).</div>
+        </div>
+        <div>
+          <div class="grid g-2">
+            <div>
+              <label><i class="fa fa-eraser"></i> NA policy</label>
+              <div class="checkline">
+                <input type="checkbox" id="jer-na-enabled">
+                <span>Enable NA normalization</span>
+              </div>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <input type="text" id="jer-na-values" placeholder=",, NA, N/A">
+              <div class="hint">Comma-separated values considered “empty” → coerced to <code>null</code>.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIG FILE -->
+    <div class="row card">
+      <div class="grid g-4">
+        <div>
+          <label><i class="fa fa-cog"></i> Use config file</label>
+          <div class="checkline"><input type="checkbox" id="jer-cfg-use"><span>Enable</span></div>
+        </div>
+        <div>
+          <label><i class="fa fa-folder-open"></i> Config path (.json under userDir)</label>
+          <input type="text" id="jer-cfg-path" placeholder="configs/extractor.json">
+          <div class="hint">Relative to <code>userDir</code>, must end with <code>.json</code></div>
+        </div>
+        <div>
+          <label><i class="fa fa-lock"></i> Lock to file</label>
+          <div class="checkline"><input type="checkbox" id="jer-cfg-lock"><span>Use file at runtime</span></div>
+        </div>
+        <div>
+          <label><i class="fa fa-refresh"></i> Watch file</label>
+          <div class="checkline"><input type="checkbox" id="jer-cfg-watch"><span>Hot-reload on change</span></div>
+        </div>
+      </div>
+      <div class="row btnrow">
+        <button class="red-ui-button" id="jer-btn-load"><i class="fa fa-download"></i> Load from file</button>
+        <button class="red-ui-button" id="jer-btn-save"><i class="fa fa-upload"></i> Save to file</button>
+        <button class="red-ui-button" id="jer-btn-template"><i class="fa fa-file-o"></i> Create template</button>
+      </div>
+    </div>
+
+    <!-- RULES -->
+    <div class="row card">
+      <div class="section-title"><i class="fa fa-list-ul"></i> Extraction rules</div>
+      <table id="jer-rules">
+        <thead>
+          <tr>
+            <th style="width:24px"></th>
+            <th style="width:260px">Name</th>
+            <th>Select</th>
+            <th style="width:240px">Filter</th>
+            <th style="width:160px">Aggregate</th>
+            <th style="width:260px">Output</th>
+            <th style="width:160px" class="right">Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="row btnrow">
+        <button class="red-ui-button" id="jer-add"><i class="fa fa-plus"></i> Add rule</button>
+      </div>
+    </div>
+  </div>
+</script>
+
+<script type="text/x-red" data-help-name="json-extract-rules">
+  <p><b>JSON Extract Rules</b> — Build ordered rules to select → filter → map → aggregate JSON, then write to msg/flow/global.</p>
+  <ul>
+    <li>Typed inputs & JSONata in select/filter/map</li>
+    <li>Aggregate: array, objectByKey, set, first, count</li>
+    <li>Config file: save / load / lock / watch</li>
+    <li>Warnings & errors with node status</li>
+  </ul>
+</script>
+
+<script type="text/javascript">
+(function(){
+  const TYPE = "json-extract-rules";
+  const clone = x => JSON.parse(JSON.stringify(x||{}));
+  const short = (s,n)=>{ s=String(s||""); return s.length>n?s.slice(0,n-1)+"…":s; };
+
+  /* path pseudo-type used alongside built-ins */
+  const PATH = { value:"path", label:"path", icon:"fa fa-dot-circle-o" };
+
+  function renderRules($tbody, rules, setLockState){
+    $tbody.empty();
+    (rules||[]).forEach((r, idx)=>{
+      const selectLbl = r.select ? `${r.selectType||'jsonata'}:${r.select}` : '(root)';
+      const filterLbl = r.filter ? `${r.filterType||'jsonata'}:${short(r.filter,60)}` : '(none)';
+      const aggLbl = (r.aggregate&&r.aggregate.mode)||'array';
+      const out = r.output||{};
+      const outLbl = `${out.type||'msg'}:${out.path||('extract.'+idx)}`;
+
+      const $tr = $(`
+        <tr>
+          <td class="drag" title="Reorder"><i class="fa fa-bars"></i></td>
+          <td>${short(r.name||('Rule '+(idx+1)), 54)}</td>
+          <td title="${selectLbl}">${short(selectLbl, 72)}</td>
+          <td title="${filterLbl}">${short(filterLbl, 60)}</td>
+          <td>${aggLbl}</td>
+          <td title="${outLbl}">${short(outLbl, 72)}</td>
+          <td class="right actions">
+            <button class="red-ui-button red-ui-button-small up"    title="Move up"><i class="fa fa-arrow-up"></i></button>
+            <button class="red-ui-button red-ui-button-small down"  title="Move down"><i class="fa fa-arrow-down"></i></button>
+            <button class="red-ui-button red-ui-button-small edit"  title="Edit"><i class="fa fa-pencil"></i></button>
+            <button class="red-ui-button red-ui-button-small del"   title="Delete"><i class="fa fa-trash"></i></button>
+          </td>
+        </tr>
+      `);
+      $(".up",$tr).on("click", ()=>{ if(idx>0){ const t=rules[idx-1]; rules[idx-1]=rules[idx]; rules[idx]=t; renderRules($tbody,rules,setLockState); setLockState(); }});
+      $(".down",$tr).on("click", ()=>{ if(idx<rules.length-1){ const t=rules[idx+1]; rules[idx+1]=rules[idx]; rules[idx]=t; renderRules($tbody,rules,setLockState); setLockState(); }});
+      $(".edit",$tr).on("click", ()=> openRuleDialog($tbody, rules, idx, setLockState));
+      $(".del",$tr).on("click", ()=>{ rules.splice(idx,1); renderRules($tbody,rules,setLockState); setLockState(); });
+      $tbody.append($tr);
+    });
+  }
+
+  function addMapRow($tbody, row){
+    const r = Object.assign({ key:"", srcType:"jsonata", src:"", transform:"none", when:"", whenType:"jsonata" }, row||{});
+    const $tr = $(`
+      <tr>
+        <td style="width:180px"><input type="text" class="m-key" placeholder="output key"></td>
+        <td><input type="text" class="m-src"><input type="hidden" class="m-srcType"></td>
+        <td style="width:140px">
+          <select class="m-tx">
+            <option value="none">none</option><option value="trim">trim</option><option value="lower">lower</option>
+            <option value="upper">upper</option><option value="number">number</option><option value="bool01">bool01</option>
+            <option value="string">string</option>
+          </select>
+        </td>
+        <td><input type="text" class="m-when" placeholder="when (optional)"><input type="hidden" class="m-whenType"></td>
+        <td style="width:84px" class="right"><button class="red-ui-button red-ui-button-small m-del"><i class="fa fa-trash"></i></button></td>
+      </tr>
+    `);
+    $(".m-key",$tr).val(r.key);
+
+    const $src=$(".m-src",$tr), $srcType=$(".m-srcType",$tr);
+    $src.typedInput({ default:r.srcType||"jsonata",
+      types:["jsonata", PATH, "msg","flow","global","env","str","num","bool","json"],
+      typeField:$srcType
+    });
+    $src.typedInput('type', r.srcType||"jsonata"); $src.typedInput('value', r.src||"");
+
+    $(".m-tx",$tr).val(r.transform||"none");
+
+    const $w=$(".m-when",$tr), $wType=$(".m-whenType",$tr);
+    $w.typedInput({ default:r.whenType||"jsonata",
+      types:["jsonata", PATH, "msg","flow","global","env","str","num","bool","json"],
+      typeField:$wType
+    });
+    $w.typedInput('type', r.whenType||"jsonata"); $w.typedInput('value', r.when||"");
+
+    $(".m-del",$tr).on("click", ()=> $tr.remove());
+    $tbody.append($tr);
+  }
+  function collectMapping($tbody){
+    const out=[]; $tbody.find("tr").each(function(){
+      const $tr=$(this);
+      const key=$(".m-key",$tr).val().trim(); if(!key) return;
+      out.push({
+        key,
+        src: $(".m-src",$tr).typedInput('value'),
+        srcType: $(".m-src",$tr).typedInput('type'),
+        transform: $(".m-tx",$tr).val(),
+        when: $(".m-when",$tr).typedInput('value'),
+        whenType: $(".m-when",$tr).typedInput('type')
+      });
+    }); return out;
+  }
+
+  function openRuleDialog($tbody, rules, index, setLockState){
+    const isNew = (index == null);
+    const cur = isNew ? {
+      name:"", selectType:"jsonata", select:"", filterType:"jsonata", filter:"",
+      map:[], aggregate:{mode:"array"}, output:{type:"msg", path:"extract.value"},
+      onEmpty:"warn", onError:"continue"
+    } : JSON.parse(JSON.stringify(rules[index]));
+
+    // Our dialog stays below the JSONata editor (which we’ll bump via CSS)
+    const OUR_Z   = 19980;
+    const EDITOR_Z = 20010; // editor dialog
+    const OVERLAY_Z = 20000; // editor overlay (just under the editor)
+
+    // Temporary CSS to ensure JSONata editor is on top of our dialog
+    const ZFIX_ID = "jer-jsonata-zfix";
+    const zfixCSS = `
+      /* make Node-RED's JSONata editor & its overlay sit above our dialog */
+      .red-ui-editor .ui-dialog { z-index: ${EDITOR_Z} !important; }
+      .red-ui-editor .ui-widget-overlay { z-index: ${OVERLAY_Z} !important; }
+    `;
+    function installZFix(){
+      if (!document.getElementById(ZFIX_ID)){
+        const s = document.createElement("style");
+        s.id = ZFIX_ID;
+        s.textContent = zfixCSS;
+        document.head.appendChild(s);
+      }
+    }
+    function removeZFix(){
+      const s = document.getElementById(ZFIX_ID);
+      if (s) s.remove();
+    }
+
+    const PATH = { value:"path", label:"path", icon:"fa fa-dot-circle-o" };
+
+    const $dlg = $(`
+      <div class="jer compact">
+        <!-- Top row -->
+        <div class="dlg-grid dlg-3">
+          <div>
+            <label>Name</label>
+            <input type="text" id="r-name" placeholder="e.g., Declared MBS names">
+          </div>
+          <div>
+            <label>Select scope</label>
+            <input type="text" id="r-select"><input type="hidden" id="r-selectType">
+            <div class="hint">Array relative to Source root (JSONata or path). Example: <code>tables[$string(meta.appConf.sheetUsed)]</code></div>
+          </div>
+          <div>
+            <label>Filter rows</label>
+            <input type="text" id="r-filter"><input type="hidden" id="r-filterType">
+            <div class="hint">Boolean expression. Example: <code>Category = "MBS" and Subcategory = "MBSModelName"</code></div>
+          </div>
+        </div>
+
+        <!-- Mapping -->
+        <div class="row subcard">
+          <div class="section-title">Mapping</div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:180px">Key</th>
+                <th>Value</th>
+                <th style="width:140px">Transform</th>
+                <th>When (optional)</th>
+                <th style="width:84px" class="right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="r-map-body"></tbody>
+          </table>
+          <div class="row btnrow">
+            <button class="red-ui-button" id="r-map-add"><i class="fa fa-plus"></i> Add field</button>
+          </div>
+        </div>
+
+        <!-- Aggregate -->
+        <div class="row">
+          <div class="dlg-grid dlg-3">
+            <div class="subcard">
+              <label>Aggregate mode</label>
+              <select id="r-agg-mode" style="width:100%">
+                <option value="array">array</option>
+                <option value="objectByKey">objectByKey</option>
+                <option value="set">set</option>
+                <option value="first">first</option>
+                <option value="count">count</option>
+              </select>
+            </div>
+            <div class="subcard" id="agg-keyexpr-wrap">
+              <label>Key expression (for objectByKey)</label>
+              <input type="text" id="r-agg-keyexpr"><input type="hidden" id="r-agg-keyexprType">
+            </div>
+            <div class="subcard" id="agg-valexpr-wrap">
+              <label>Value expression (for set)</label>
+              <input type="text" id="r-agg-valexpr"><input type="hidden" id="r-agg-valexprType">
+            </div>
+          </div>
+        </div>
+
+        <!-- Output -->
+        <div class="row subcard">
+          <div class="dlg-grid dlg-3">
+            <div>
+              <label>Output target</label>
+              <input type="text" id="r-out-path"><input type="hidden" id="r-out-type">
+              <div class="hint">Write to <code>msg</code>/<code>flow</code>/<code>global</code> path.</div>
+            </div>
+            <div>
+              <label>On empty</label>
+              <select id="r-onEmpty" style="width:100%">
+                <option value="warn">warn</option>
+                <option value="ok">ok</option>
+                <option value="error">error</option>
+              </select>
+            </div>
+            <div>
+              <label>On error</label>
+              <select id="r-onError" style="width:100%">
+                <option value="continue">continue</option>
+                <option value="stop">stop</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    `).appendTo("body").dialog({
+      modal:false,
+      appendTo:"body",
+      zIndex: OUR_Z,
+      width: Math.min(1120, Math.floor($(window).width()*0.94)),
+      height: Math.min(780, Math.floor($(window).height()*0.94)),
+      title: isNew ? "Add rule" : "Edit rule",
+      open(){
+        installZFix(); // ensure JSONata editor will float above
+      },
+      buttons:[
+        { text:"Cancel", click(){ $(this).dialog("destroy").remove(); } },
+        { text:"Save", class:"primary", click(){
+          const out = {
+            name: $("#r-name").val().trim(),
+            select: $("#r-select").typedInput('value'),
+            selectType: $("#r-select").typedInput('type'),
+            filter: $("#r-filter").typedInput('value'),
+            filterType: $("#r-filter").typedInput('type'),
+            map: collectMapping($("#r-map-body")),
+            aggregate: {
+              mode: $("#r-agg-mode").val(),
+              keyExpr: $("#r-agg-keyexpr").typedInput('value'),
+              keyExprType: $("#r-agg-keyexpr").typedInput('type'),
+              valueExpr: $("#r-agg-valexpr").typedInput('value'),
+              valueExprType: $("#r-agg-valexpr").typedInput('type')
+            },
+            output: { type: $("#r-out-path").typedInput('type'), path: $("#r-out-path").typedInput('value') },
+            onEmpty: $("#r-onEmpty").val(),
+            onError: $("#r-onError").val()
+          };
+          if (isNew) rules.push(out); else rules[index] = out;
+          renderRules($("#jer-rules tbody"), rules, setLockState); setLockState();
+          $(this).dialog("destroy").remove();
+        }}
+      ],
+      close(){
+        removeZFix();              // cleanup CSS
+        $(this).remove();
+      }
+    });
+
+    // init values
+    $("#r-name").val(cur.name||"");
+
+    $("#r-select").typedInput({
+      default:cur.selectType||"jsonata",
+      types:["jsonata", PATH],
+      typeField:$("#r-selectType")
+    });
+    $("#r-select").typedInput('type', cur.selectType||"jsonata");
+    $("#r-select").typedInput('value', cur.select||"");
+
+    $("#r-filter").typedInput({
+      default:cur.filterType||"jsonata",
+      types:["jsonata", PATH,"msg","flow","global","env","str","num","bool","json"],
+      typeField:$("#r-filterType")
+    });
+    $("#r-filter").typedInput('type', cur.filterType||"jsonata");
+    $("#r-filter").typedInput('value', cur.filter||"");
+
+    const $mb = $("#r-map-body").empty();
+    (cur.map||[]).forEach(m => addMapRow($mb, m));
+    $("#r-map-add").on("click", ()=> addMapRow($mb));
+
+    $("#r-agg-mode").val(cur.aggregate?.mode || "array");
+
+    $("#r-agg-keyexpr").typedInput({
+      default:cur.aggregate?.keyExprType||"jsonata",
+      types:["jsonata", PATH,"msg","flow","global","env","str","num","bool","json"],
+      typeField:$("#r-agg-keyexprType")
+    });
+    $("#r-agg-keyexpr").typedInput('type', cur.aggregate?.keyExprType||"jsonata");
+    $("#r-agg-keyexpr").typedInput('value', cur.aggregate?.keyExpr || "");
+
+    $("#r-agg-valexpr").typedInput({
+      default:cur.aggregate?.valueExprType||"jsonata",
+      types:["jsonata", PATH,"msg","flow","global","env","str","num","bool","json"],
+      typeField:$("#r-agg-valexprType")
+    });
+    $("#r-agg-valexpr").typedInput('type', cur.aggregate?.valueExprType||"jsonata");
+    $("#r-agg-valexpr").typedInput('value', cur.aggregate?.valueExpr || "");
+
+    function toggleAggExtras(){
+      const m = $("#r-agg-mode").val();
+      $("#agg-keyexpr-wrap").toggle(m === "objectByKey");
+      $("#agg-valexpr-wrap").toggle(m === "set");
+    }
+    $("#r-agg-mode").on("change", toggleAggExtras); toggleAggExtras();
+
+    $("#r-out-path").typedInput({
+      default:cur.output?.type||"msg",
+      types:["msg","flow","global"],
+      typeField:$("#r-out-type")
+    });
+    $("#r-out-path").typedInput('type', cur.output?.type||"msg");
+    $("#r-out-path").typedInput('value', cur.output?.path || "extract.value");
+
+    $("#r-onEmpty").val(cur.onEmpty || "warn");
+    $("#r-onError").val(cur.onError || "continue");
+  }
+
+  // ---- Register node (IDs unchanged so your JS keeps working) ----
+  RED.nodes.registerType(TYPE,{
+    category:'function',
+    color:'#E9F7FF',
+    icon:'font-awesome/fa-filter',
+    paletteLabel:'json extract',
+    defaults:{
+      name:{value:""},
+      source:{value:{ type:"msg", path:"data" }},
+      naPolicy:{value:{ enabled:true, values:["", "NA", "N/A"] }},
+      rules:{value:[]},
+      useConfigFile:{value:false}, configPath:{value:""}, lockToFile:{value:false}, watchFile:{value:false}
+    },
+    inputs:1, outputs:1,
+    label(){ return this.name || "json-extract-rules"; },
+
+    oneditprepare: function(){
+      const self=this;
+      const rules = Array.isArray(self.rules)? JSON.parse(JSON.stringify(self.rules)) : [];
+
+      $("#jer-source-path").typedInput({
+        default:(self.source&&self.source.type)||'msg',
+        types:['msg','flow','global', "jsonata", PATH],
+        typeField:$("#jer-source-type")
+      });
+      $("#jer-source-path").typedInput('type',(self.source&&self.source.type)||'msg');
+      $("#jer-source-path").typedInput('value',(self.source&&self.source.path)||'data');
+
+      $("#jer-na-enabled").prop("checked", !!(self.naPolicy&&self.naPolicy.enabled));
+      $("#jer-na-values").val((self.naPolicy && Array.isArray(self.naPolicy.values)? self.naPolicy.values.join(", ") : ",, NA, N/A"));
+
+      $("#jer-cfg-use").prop("checked", !!self.useConfigFile);
+      $("#jer-cfg-path").val(self.configPath||"");
+      $("#jer-cfg-lock").prop("checked", !!self.lockToFile);
+      $("#jer-cfg-watch").prop("checked", !!self.watchFile);
+
+      function setCfgEnabled(){
+        const on=$("#jer-cfg-use").is(":checked");
+        $("#jer-cfg-path,#jer-btn-load,#jer-btn-save,#jer-btn-template,#jer-cfg-lock,#jer-cfg-watch").prop("disabled",!on);
+      }
+      $("#jer-cfg-use").on("change", setCfgEnabled); setCfgEnabled();
+
+      const $tbody=$("#jer-rules tbody");
+      const setLockState=()=>{
+        const locked=$("#jer-cfg-lock").is(":checked");
+        $("#jer-btn-load,#jer-btn-save,#jer-btn-template,#jer-source-path,#jer-na-enabled,#jer-na-values,#jer-add").prop("disabled", locked);
+        $("#jer-rules .up,#jer-rules .down,#jer-rules .edit,#jer-rules .del").prop("disabled", locked);
+      };
+      renderRules($tbody, rules, setLockState);
+      $("#jer-add").on("click", ()=> openRuleDialog($tbody, rules, null, setLockState));
+
+      // Config actions
+      const cfgPath=()=> $("#jer-cfg-path").val().trim();
+      $("#jer-btn-load").on("click", function(){
+        const p=cfgPath(); if(!p){ RED.notify("Config path is empty","error"); return; }
+        $.getJSON("json-extract-rules/config",{file:p}).done(res=>{
+          if(!res||!res.ok) return RED.notify(res?.error||"Load failed","error");
+          const c=res.config||{};
+          const s=c.source||{type:"msg",path:"data"};
+          $("#jer-source-path").typedInput('type', s.type||"msg"); $("#jer-source-path").typedInput('value', s.path||"data");
+          const na=c.naPolicy||{enabled:true,values:["","NA","N/A"]};
+          $("#jer-na-enabled").prop("checked", !!na.enabled);
+          $("#jer-na-values").val(Array.isArray(na.values)? na.values.join(", ") : "");
+          rules.splice(0,rules.length, ...(Array.isArray(c.rules)?c.rules:[]));
+          renderRules($tbody, rules, setLockState); setLockState();
+          RED.notify("Loaded configuration","success");
+        }).fail(xhr=> RED.notify(xhr?.responseJSON?.error||"Load failed","error"));
+      });
+
+      $("#jer-btn-save").on("click", function(){
+        const p=cfgPath(); if(!p){ RED.notify("Config path is empty","error"); return; }
+        const body={ file:p, config:{
+          source:{ type:$("#jer-source-path").typedInput('type'), path:$("#jer-source-path").typedInput('value') },
+          naPolicy:{ enabled:$("#jer-na-enabled").is(":checked"), values:String($("#jer-na-values").val()||"").split(",").map(s=>s.trim()).filter(x=>x.length>0||x==="") },
+          rules: rules
+        }};
+        $.ajax({ url:"json-extract-rules/config", method:"POST", contentType:"application/json", data:JSON.stringify(body) })
+          .done(()=> RED.notify("Saved configuration","success"))
+          .fail(xhr=> RED.notify(xhr?.responseJSON?.error||"Save failed","error"));
+      });
+
+      $("#jer-btn-template").on("click", function(){
+        const p=cfgPath(); if(!p){ RED.notify("Config path is empty","error"); return; }
+        $.getJSON("json-extract-rules/template").done(res=>{
+          const body={ file:p, config:res.template };
+          $.ajax({ url:"json-extract-rules/config", method:"POST", contentType:"application/json", data:JSON.stringify(body) })
+            .done(()=> RED.notify("Template written","success"))
+            .fail(xhr=> RED.notify(xhr?.responseJSON?.error||"Write failed","error"));
+        }).fail(()=> RED.notify("Template fetch failed","error"));
+      });
+
+      $("#jer-cfg-lock").on("change", setLockState); setLockState();
+
+      this._collect = ()=> rules;
+    },
+
+    oneditsave: function(){
+      this.source = { type:$("#jer-source-path").typedInput('type'), path:$("#jer-source-path").typedInput('value') };
+      this.naPolicy = { enabled:$("#jer-na-enabled").is(":checked"), values:String($("#jer-na-values").val()||"").split(",").map(s=>s.trim()).filter(x=>x.length>0||x==="") };
+      this.rules = this._collect ? this._collect() : [];
+      this.useConfigFile = $("#jer-cfg-use").is(":checked");
+      this.configPath = $("#jer-cfg-path").val().trim();
+      this.lockToFile = $("#jer-cfg-lock").is(":checked");
+      this.watchFile = $("#jer-cfg-watch").is(":checked");
+    }
+  });
+})();
+</script>
